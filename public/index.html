@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>صالون الشايب</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="header-logo">✂️ <span>صالون الشايب</span></div>
+      <nav class="header-nav">
+        <span id="barberStatus" class="status-badge status-available">🟢 متاح</span>
+        <span id="userDisplay"></span>
+        <button class="btn btn-primary btn-sm" onclick="location.href='book.html'">📅 احجز موعد</button>
+        <button class="btn btn-secondary btn-sm" onclick="location.href='loyalty.html'">🎁 الولاء</button>
+        <button class="btn btn-secondary btn-sm" onclick="location.href='coupons.html'">🎟️ عروض</button>
+        <button class="btn btn-secondary btn-sm" onclick="location.href='products.html'">🧴 عطور</button>
+        <button class="btn btn-secondary btn-sm" onclick="location.href='chat.html'">💬 دردشة</button>
+        <button class="btn btn-secondary btn-sm" onclick="location.href='notifications.html'">🔔</button>
+        <button class="btn btn-secondary btn-sm" id="adminBtn" style="display:none" onclick="location.href='admin.html'">لوحة التحكم</button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn" onclick="handleLogout()">تسجيل خروج</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="card">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2>🟢 حالة الحلاق</h2>
+          <p style="color:var(--text-secondary)" id="statusText">الحلاق متاح حالياً</p>
+        </div>
+        <div>
+          <span id="statusBadge" class="status-badge status-available">🟢 متاح</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card text-center">
+      <button class="btn btn-primary" onclick="location.href='book.html'" style="font-size:20px;padding:16px 40px;width:100%;">
+        📅 احجز موعدك الآن
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>📋 مواعيدي</h2>
+      <div id="appointmentsList" class="appointment-list mt-20"></div>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

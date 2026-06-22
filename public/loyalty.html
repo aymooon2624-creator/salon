@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نقاط الولاء - صالون الشايب</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="header-logo">🎁 <span>نقاط الولاء</span></div>
+      <nav class="header-nav">
+        <button class="btn btn-secondary btn-sm" onclick="location.href='index.html'">الرئيسية</button>
+        <span id="userDisplay"></span>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn" onclick="handleLogout()">تسجيل خروج</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="stats-grid">
+      <div class="stat-card fade-in">
+        <div class="stat-value" style="color:var(--gold);" id="pointsBalance">0</div>
+        <div class="stat-label">⭐ رصيد النقاط</div>
+      </div>
+      <div class="stat-card fade-in">
+        <div class="stat-value" id="thisMonth">0</div>
+        <div class="stat-label">📊 هذا الشهر</div>
+      </div>
+      <div class="stat-card fade-in">
+        <div class="stat-value" id="totalEarned">0</div>
+        <div class="stat-label">📈 المجموع</div>
+      </div>
+      <div class="stat-card fade-in">
+        <div class="stat-value" id="totalRedeemed">0</div>
+        <div class="stat-label">🔄 تم الاستبدال</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:20px;">🎁 استبدل نقاطك</h2>
+      <div id="rewardsList" class="rewards-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:20px;">📋 سجل النقاط</h2>
+      <div id="pointsHistory"></div>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/loyalty.js"></script>
+</body>
+</html>

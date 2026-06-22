@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حجز موعد - صالون الشايب</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="header-logo">✂️ <span>صالون الشايب</span></div>
+      <nav class="header-nav">
+        <button class="btn btn-secondary btn-sm" onclick="location.href='index.html'">الرئيسية</button>
+        <span id="userDisplay"></span>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn" onclick="handleLogout()">تسجيل خروج</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="text-center" style="margin: 30px 0">✂️ احجز موعدك الآن</h1>
+
+    <div class="card" style="max-width: 700px; margin: 0 auto;">
+      <div class="flex gap-16" style="flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:200px;">
+          <label>📅 التاريخ</label>
+          <input type="date" class="form-input" id="bookingDate">
+        </div>
+        <div class="form-group" style="flex:1;min-width:200px;">
+          <label>⏰ الوقت</label>
+          <select class="form-input" id="bookingTime">
+            <option value="">اختر الوقت</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="statusMessage" class="mb-20"></div>
+
+      <h3 style="margin-bottom:16px;">اختر خدماتك</h3>
+      <div id="servicesList" class="service-grid"></div>
+
+      <div style="margin-top:20px;">
+        <div style="display:flex;gap:12px;align-items:flex-end;">
+          <div class="form-group" style="flex:1;margin-bottom:0;">
+            <label>🎟️ كود خصم</label>
+            <input type="text" class="form-input" id="couponInput" placeholder="أدخل كود الخصم">
+          </div>
+          <button type="button" class="btn btn-warning" id="applyCouponBtn" style="margin-bottom:20px;">تطبيق</button>
+        </div>
+        <div id="couponResult"></div>
+      </div>
+
+      <div id="loyaltySection" style="display:none;margin-top:16px;">
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--bg-card);padding:12px 16px;border-radius:12px;">
+          <input type="checkbox" id="useLoyalty" style="width:20px;height:20px;">
+          <span id="loyaltyLabel" style="font-weight:700;">🎁 استخدم نقاط الولاء</span>
+        </label>
+      </div>
+
+      <div id="summaryBox" class="summary-box" style="display:none;">
+        <div class="summary-row">
+          <span>💰 الإجمالي</span>
+          <span id="totalPrice">0 دينار</span>
+        </div>
+        <div class="summary-row" id="discountRow" style="display:none;color:var(--success);">
+          <span>💰 الخصم</span>
+          <span id="discountAmount">0 دينار</span>
+        </div>
+        <div class="summary-row total" id="finalRow" style="display:none;">
+          <span>💵 الصافي</span>
+          <span id="finalPrice">0 دينار</span>
+        </div>
+        <div class="summary-row total">
+          <span>⏱️ المدة الإجمالية</span>
+          <span id="totalDuration">0 دقيقة</span>
+        </div>
+      </div>
+
+      <div id="autoCancelNotice" style="margin-top:16px;padding:12px;background:rgba(243,156,18,0.1);border:1px solid var(--warning);border-radius:12px;font-size:14px;color:var(--warning);display:none;">
+        ⏰ تنبيه: إذا لم تحضر خلال <strong id="autoCancelTime">5</strong> دقائق من وقت الموعد، سيتم إلغاء الحجز تلقائياً
+      </div>
+
+      <button class="btn btn-primary" id="confirmBtn" style="width:100%;margin-top:20px;font-size:18px;padding:16px;" disabled>
+        ✅ تأكيد الحجز
+      </button>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/book.js"></script>
+</body>
+</html>

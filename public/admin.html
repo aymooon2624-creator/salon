@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة التحكم - صالون الشايب</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="header-logo">🎛️ <span>لوحة</span> التحكم</div>
+      <nav class="header-nav">
+        <span id="userDisplay"></span>
+        <button class="btn btn-secondary btn-sm" onclick="switchTab('chat', document.querySelector('.tab:nth-child(8)'))" style="position:relative;">
+          💬 <span id="chatUnreadBadge" class="badge-danger" style="display:none;position:absolute;top:-4px;right:-4px;font-size:11px;padding:2px 6px;">0</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn" onclick="handleLogout()">تسجيل خروج</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="card mb-20">
+      <h3 style="margin-bottom:16px;">🟢 حالة الحلاق</h3>
+      <div class="status-controls">
+        <button class="status-btn" data-status="available" onclick="setBarberStatus('available')">🟢 متاح الآن</button>
+        <button class="status-btn" data-status="busy" onclick="setBarberStatus('busy')">🔴 مشغول</button>
+        <button class="status-btn" data-status="away" onclick="setBarberStatus('away')">⏸️ خارج</button>
+      </div>
+      <div id="awayTimeGroup" class="form-group mt-20" style="display:none;">
+        <label>⏱️ يرجع الساعة:</label>
+        <input type="time" class="form-input" id="backAt" style="max-width:200px;">
+        <button class="btn btn-success btn-sm mt-20" onclick="saveBackTime()">حفظ</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('appointments', this)">📋 المواعيد</button>
+      <button class="tab" onclick="switchTab('services', this)">✂️ الخدمات</button>
+      <button class="tab" onclick="switchTab('products', this)">🧴 العطور</button>
+      <button class="tab" onclick="switchTab('customers', this)">👥 الزبائن</button>
+      <button class="tab" onclick="switchTab('reports', this)">📊 التقارير</button>
+      <button class="tab" onclick="switchTab('recurring', this)">🔄 حجوزات متكررة</button>
+      <button class="tab" onclick="switchTab('chat', this)">💬 الدردشة</button>
+      <button class="tab" onclick="switchTab('coupons', this)">🎟️ الكوبونات</button>
+      <button class="tab" onclick="switchTab('notifications-panel', this)">🔔 الإشعارات</button>
+      <button class="tab" onclick="switchTab('settings', this)">⚙️ الإعدادات</button>
+    </div>
+
+    <div id="tab-appointments" class="tab-content active">
+      <div class="card">
+        <div class="flex items-center justify-between mb-20">
+          <h3>📋 مواعيد اليوم</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadTodayAppointments()">🔄 تحديث</button>
+        </div>
+        <div id="todayAppointments"><p style="color:var(--text-secondary)">جاري التحميل...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-products" class="tab-content">
+      <div class="card">
+        <div class="flex items-center justify-between mb-20">
+          <h3>🧴 العطور والمنتجات</h3>
+          <button class="btn btn-primary btn-sm" onclick="showAddProductModal()">+ إضافة منتج</button>
+        </div>
+        <div id="productsTabList"></div>
+      </div>
+    </div>
+
+    <div id="tab-services" class="tab-content">
+      <div class="card">
+        <div class="flex items-center justify-between mb-20">
+          <h3>✂️ الخدمات</h3>
+          <button class="btn btn-primary btn-sm" onclick="showAddServiceModal()">+ إضافة خدمة</button>
+        </div>
+        <div id="servicesTabList"></div>
+      </div>
+    </div>
+
+    <div id="tab-customers" class="tab-content">
+      <div class="card">
+        <h3 class="mb-20">👥 بيانات الزبائن من الحجوزات</h3>
+        <div id="customersList"><p style="color:var(--text-secondary)">جاري التحميل...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-reports" class="tab-content">
+      <div class="card">
+        <h3 class="mb-20">📊 التقارير</h3>
+        <div class="flex gap-12 mb-20" style="flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="loadReport('daily')">📈 اليوم</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadReport('weekly')">📈 الأسبوع</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadReport('monthly')">📈 الشهر</button>
+        </div>
+        <div id="reportContent"></div>
+      </div>
+    </div>
+
+    <div id="tab-recurring" class="tab-content">
+      <div class="card">
+        <div class="flex items-center justify-between mb-20">
+          <h3>🔄 الحجوزات المتكررة</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadRecurringTab()">🔄 تحديث</button>
+        </div>
+        <div id="recurringList"><p style="color:var(--text-secondary)">جاري التحميل...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-chat" class="tab-content">
+      <div class="card">
+        <h3 class="mb-20">💬 الدردشة مع الزبائن</h3>
+        <div id="adminChatArea"><p style="color:var(--text-secondary)">جاري التحميل...</p></div>
+      </div>
+      <div class="card" id="adminChatAppointments" style="display:none;">
+        <h3 class="mb-20">📋 مواعيد الزبون</h3>
+        <div id="adminChatAppointmentsList"></div>
+      </div>
+      <div class="card" id="reschedulePanel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3>🔄 تغيير موعد</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeReschedulePanel()">❌ إلغاء</button>
+        </div>
+        <div class="flex gap-16" style="flex-wrap:wrap;">
+          <div class="form-group" style="flex:1;min-width:150px;">
+            <label>📅 التاريخ الجديد</label>
+            <input type="date" class="form-input" id="rescheduleDate" onchange="loadRescheduleSlots(this.value)">
+          </div>
+          <div class="form-group" style="flex:1;min-width:150px;">
+            <label>⏰ الوقت الجديد</label>
+            <select class="form-input" id="rescheduleTime"><option value="">اختر الوقت</option></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="confirmReschedule()">✅ تأكيد تغيير الموعد</button>
+      </div>
+    </div>
+
+    <div id="tab-coupons" class="tab-content">
+      <div class="card">
+        <div class="flex items-center justify-between mb-20">
+          <h3>🎟️ الكوبونات والعروض</h3>
+          <button class="btn btn-primary btn-sm" onclick="showAddCouponModal()">+ إضافة كوبون</button>
+        </div>
+        <div id="couponsTabList"><p style="color:var(--text-secondary)">جاري التحميل...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-notifications-panel" class="tab-content">
+      <div class="card">
+        <div class="flex items-center justify-between mb-20">
+          <h3>🔔 إعدادات الإشعارات</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadNotificationSettings()">🔄 تحديث</button>
+        </div>
+        <div id="notificationSettingsForm"></div>
+      </div>
+    </div>
+
+    <div id="tab-settings" class="tab-content">
+      <div class="card">
+        <h3 class="mb-20">⚙️ الإعدادات</h3>
+        <div id="settingsForm"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Coupon Modal -->
+  <div class="modal-overlay" id="couponModal">
+    <div class="modal">
+      <h2>🎟️ إضافة / تعديل كوبون</h2>
+      <form id="couponForm">
+        <div class="flex gap-16">
+          <div class="form-group" style="flex:1;">
+            <label>كود الكوبون</label>
+            <input type="text" class="form-input" id="cpnCode" placeholder="SUMMER30" required>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>نوع الخصم</label>
+            <select class="form-input" id="cpnType">
+              <option value="percentage">نسبة مئوية (%)</option>
+              <option value="fixed">قيمة ثابتة</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-16">
+          <div class="form-group" style="flex:1;">
+            <label>قيمة الخصم</label>
+            <input type="number" class="form-input" id="cpnValue" min="0" step="0.5" required>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>الحد الأدنى للطلب</label>
+            <input type="number" class="form-input" id="cpnMinOrder" min="0" value="0" step="1">
+          </div>
+        </div>
+        <div class="flex gap-16">
+          <div class="form-group" style="flex:1;">
+            <label>الحد الأقصى للخصم</label>
+            <input type="number" class="form-input" id="cpnMaxDiscount" min="0" step="0.5" placeholder="بدون حد">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>عدد الاستخدامات</label>
+            <input type="number" class="form-input" id="cpnUsageLimit" min="0" placeholder="بدون حد">
+          </div>
+        </div>
+        <div class="flex gap-16">
+          <div class="form-group" style="flex:1;">
+            <label>صالح من</label>
+            <input type="date" class="form-input" id="cpnValidFrom" required>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>صالح حتى</label>
+            <input type="date" class="form-input" id="cpnValidUntil" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>وصف (اختياري)</label>
+          <input type="text" class="form-input" id="cpnDesc" placeholder="وصف العرض">
+        </div>
+        <div class="flex gap-12">
+          <button type="submit" class="btn btn-primary" style="flex:1;">💾 حفظ</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('couponModal')">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Product Modal -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal">
+      <h2>🧴 إضافة / تعديل منتج</h2>
+      <form id="productForm">
+        <div class="form-group">
+          <label>اسم المنتج</label>
+          <input type="text" class="form-input" id="prodName" required>
+        </div>
+        <div class="flex gap-16">
+          <div class="form-group" style="flex:1;">
+            <label>السعر (دينار)</label>
+            <input type="number" class="form-input" id="prodPrice" min="0" step="0.5" required>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>الأيقونة</label>
+            <input type="text" class="form-input" id="prodIcon" placeholder="🧴" maxlength="2">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>وصف قصير</label>
+          <input type="text" class="form-input" id="prodDesc" placeholder="وصف المنتج">
+        </div>
+        <div class="flex gap-12">
+          <button type="submit" class="btn btn-primary" style="flex:1;">💾 حفظ</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('productModal')">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Service Modal -->
+  <div class="modal-overlay" id="serviceModal">
+    <div class="modal">
+      <h2>✂️ إضافة / تعديل خدمة</h2>
+      <form id="serviceForm">
+        <div class="form-group">
+          <label>اسم الخدمة</label>
+          <input type="text" class="form-input" id="svcName" required>
+        </div>
+        <div class="flex gap-16">
+          <div class="form-group" style="flex:1;">
+            <label>السعر (دينار)</label>
+            <input type="number" class="form-input" id="svcPrice" min="0" step="0.5" required>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>المدة (دقيقة)</label>
+            <input type="number" class="form-input" id="svcDuration" min="5" step="5" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>الأيقونة</label>
+          <input type="text" class="form-input" id="svcIcon" placeholder="✂️" maxlength="2">
+        </div>
+        <div class="flex gap-12">
+          <button type="submit" class="btn btn-primary" style="flex:1;">💾 حفظ</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('serviceModal')">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h2>⚙️ تعديل الإعدادات</h2>
+      <form id="editSettingsForm">
+        <div class="settings-grid">
+          <div class="form-group">
+            <label>🕐 بداية العمل</label>
+            <input type="time" class="form-input" id="setWorkStart">
+          </div>
+          <div class="form-group">
+            <label>🕐 نهاية العمل</label>
+            <input type="time" class="form-input" id="setWorkEnd">
+          </div>
+          <div class="form-group">
+            <label>⏰ مدة الفتحة (دقيقة)</label>
+            <input type="number" class="form-input" id="setSlotDuration" min="15" step="5">
+          </div>
+          <div class="form-group">
+            <label>⏰ الإلغاء التلقائي (دقائق)</label>
+            <input type="number" class="form-input" id="setAutoCancel" min="1" step="1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:12px;">
+            <input type="checkbox" id="setNotification" style="width:20px;height:20px;">
+            تفعيل الإشعارات
+          </label>
+        </div>
+        <div class="flex gap-12">
+          <button type="submit" class="btn btn-primary" style="flex:1;">💾 حفظ</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('settingsModal')">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

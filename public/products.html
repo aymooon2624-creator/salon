@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>العطور - صالون الشايب</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <div class="header-logo">✂️ <span>صالون الشايب</span></div>
+      <nav class="header-nav">
+        <button class="btn btn-secondary btn-sm" onclick="location.href='index.html'">الرئيسية</button>
+        <span id="userDisplay"></span>
+        <button class="btn btn-secondary btn-sm" id="adminBtn" style="display:none" onclick="location.href='admin.html'">لوحة التحكم</button>
+        <button class="btn btn-secondary btn-sm" id="logoutBtn" onclick="handleLogout()">تسجيل خروج</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="text-center" style="margin:30px 0;">🧴 العطور والمستلزمات</h1>
+    <div id="productsGrid" class="service-grid"></div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script>
+    async function loadProducts() {
+      try {
+        const products = await apiRequest('/products');
+        const container = document.getElementById('productsGrid');
+        if (products.length === 0) {
+          container.innerHTML = '<div class="empty-state"><span class="empty-icon">🧴</span>لا توجد منتجات متاحة</div>';
+          return;
+        }
+        container.innerHTML = products.map(p => `
+          <div class="service-item" style="cursor:default;">
+            <span style="font-size:40px;">${p.icon}</span>
+            <div class="service-info">
+              <div class="service-name">${p.name}</div>
+              <div class="service-meta">${p.price} دينار</div>
+              ${p.description ? `<div style="color:var(--text-secondary);font-size:13px;margin-top:4px;">${p.description}</div>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('productsGrid').innerHTML = '<p style="color:var(--danger)">❌ فشل تحميل المنتجات</p>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!isLoggedIn()) return;
+      loadProducts();
+    });
+  </script>
+</body>
+</html>
