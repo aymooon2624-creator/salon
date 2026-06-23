@@ -8,11 +8,13 @@ async function init() {
 
   const { prepare, save } = await getDb();
 
-  const adminExists = await prepare('SELECT id FROM users WHERE username = ?').get('admin');
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminExists = await prepare('SELECT id FROM users WHERE username = ?').get(adminUsername);
   if (!adminExists) {
-    const hashed = bcrypt.hashSync('admin123', 10);
-    await prepare('INSERT INTO users (username, password, phone, role) VALUES (?, ?, ?, ?)').run('admin', hashed, '0500000000', 'admin');
-    console.log('✅ تم إنشاء حساب الأدمن (admin / admin123)');
+    const hashed = bcrypt.hashSync(adminPassword, 10);
+    await prepare('INSERT INTO users (username, password, phone, role) VALUES (?, ?, ?, ?)').run(adminUsername, hashed, '0500000000', 'admin');
+    console.log(`✅ تم إنشاء حساب الأدمن (${adminUsername} / ${adminPassword})`);
   } else {
     console.log('ℹ️  حساب الأدمن موجود مسبقاً');
   }
@@ -38,7 +40,7 @@ async function init() {
 
   const barberStatus = await prepare('SELECT id FROM barber_status WHERE id = 1').get();
   if (!barberStatus) {
-    await prepare('INSERT INTO barber_status (id, status) VALUES (1, "available")').run();
+    await prepare(`INSERT INTO barber_status (id, status) VALUES (1, 'available')`).run();
     console.log('✅ تم تعيين حالة الحلاق (متاح)');
   } else {
     console.log('ℹ️  حالة الحلاق موجودة مسبقاً');

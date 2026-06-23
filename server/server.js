@@ -39,6 +39,10 @@ app.use('/api/recurring', recurringRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/coupons', couponRoutes);
 
+app.get('/dashboard', authenticateToken, requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 app.get('/api/settings/public', async (req, res) => {
   try {
     const { prepare } = await getDb();
@@ -96,7 +100,10 @@ async function startServer() {
   });
 }
 
-initDb().catch(err => console.error('❌ DB init:', err));
+initDb().then(async () => {
+  const { testConnection } = require('./database');
+  await testConnection();
+}).catch(err => console.error('❌ DB init:', err));
 
 if (require.main === module) {
   startServer().catch(err => {

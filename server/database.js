@@ -3,12 +3,28 @@ const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  connectionTimeoutMillis: 10000
+  connectionTimeoutMillis: 15000
 });
 
 pool.on('error', err => {
   console.error('⚠️ خطأ في قاعدة البيانات:', err.message);
 });
+
+async function testConnection() {
+  try {
+    const client = await pool.connect();
+    const res = await client.query('SELECT NOW()');
+    console.log('✅ اتصال قاعدة البيانات ناجح:', res.rows[0].now);
+    client.release();
+    return true;
+  } catch (err) {
+    console.error('❌ فشل الاتصال بقاعدة البيانات:');
+    console.error('   كود الخطأ:', err.code);
+    console.error('   رسالة:', err.message);
+    if (err.severity) console.error('   severity:', err.severity);
+    return false;
+  }
+}
 
 class Statement {
   constructor(sql) {
@@ -257,4 +273,4 @@ async function initTables() {
   }
 }
 
-module.exports = { getDb, initTables };
+module.exports = { getDb, initTables, testConnection };

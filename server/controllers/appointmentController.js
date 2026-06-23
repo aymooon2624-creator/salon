@@ -336,9 +336,9 @@ async function getAvailableSlots(req, res) {
     return res.json({ slots: [], message: 'الحلاق غير متاح اليوم' });
   }
 
-  const [startH, startM] = (settings.work_start || '09:00').split(':').map(Number);
-  const [endH, endM] = (settings.work_end || '21:00').split(':').map(Number);
-  const slotDuration = settings.slot_duration || 30;
+  const [startH, startM] = ((settings && settings.work_start) || '09:00').split(':').map(Number);
+  const [endH, endM] = ((settings && settings.work_end) || '21:00').split(':').map(Number);
+  const slotDuration = (settings && settings.slot_duration) || 30;
 
   const booked = await prepare(`
     SELECT date_time FROM appointments

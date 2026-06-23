@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = data.user.role === 'admin' ? 'admin.html' : 'index.html';
+        window.location.href = data.user.role === 'admin' ? '/dashboard' : 'index.html';
       } catch (err) {
         showToast(err.message, 'error');
       }
