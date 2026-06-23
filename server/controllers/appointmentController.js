@@ -350,26 +350,22 @@ async function getAvailableSlots(req, res) {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }));
 
-  const slots = [];
-  let current = new Date();
-  current.setHours(startH, startM, 0, 0);
-
-  const endTime = new Date();
-  endTime.setHours(endH, endM, 0, 0);
-
   const now = new Date();
-  const isToday = date === now.toISOString().split('T')[0];
+  const nowStr = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
+  const todayUTC = now.toISOString().split('T')[0];
+  const isToday = date === todayUTC;
 
-  while (current < endTime) {
-    const timeStr = `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`;
-
-    if (!bookedTimes.has(timeStr)) {
-      if (!isToday || current > now) {
-        slots.push(timeStr);
+  const slots = [];
+  for (let h = startH; h <= endH; h++) {
+    for (let m = (h === startH ? startM : 0); m < 60; m += slotDuration) {
+      if (h === endH && m >= endM) break;
+      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      if (!bookedTimes.has(timeStr)) {
+        if (!isToday || timeStr > nowStr) {
+          slots.push(timeStr);
+        }
       }
     }
-
-    current = new Date(current.getTime() + slotDuration * 60000);
   }
 
   res.json({ slots, date });
