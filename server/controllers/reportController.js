@@ -6,7 +6,7 @@ async function getDaily(req, res) {
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-  const appointments = prepare(`
+  const appointments = await prepare(`
     SELECT * FROM appointments
     WHERE date_time >= ? AND date_time < ?
     AND status = 'completed'
@@ -15,7 +15,7 @@ async function getDaily(req, res) {
   const total_income = appointments.reduce((sum, a) => sum + a.total_price, 0);
   const total_appointments = appointments.length;
 
-  const servicesUsed = prepare(`
+  const servicesUsed = await prepare(`
     SELECT s.name, s.icon, COUNT(*) as count, SUM(aps.price_at_booking) as total
     FROM appointment_services aps
     JOIN services s ON aps.service_id = s.id
@@ -36,7 +36,7 @@ async function getWeekly(req, res) {
   const end = new Date(now);
   end.setHours(23, 59, 59, 999);
 
-  const appointments = prepare(`
+  const appointments = await prepare(`
     SELECT * FROM appointments
     WHERE date_time >= ? AND date_time <= ?
     AND status = 'completed'
@@ -45,11 +45,11 @@ async function getWeekly(req, res) {
   const total_income = appointments.reduce((sum, a) => sum + a.total_price, 0);
   const total_appointments = appointments.length;
 
-  const byDay = prepare(`
-    SELECT date(date_time) as day, COUNT(*) as count, SUM(total_price) as income
+  const byDay = await prepare(`
+    SELECT date_time::date as day, COUNT(*) as count, SUM(total_price) as income
     FROM appointments
     WHERE date_time >= ? AND date_time <= ? AND status = 'completed'
-    GROUP BY date(date_time)
+    GROUP BY date_time::date
   `).all(start.toISOString(), end.toISOString());
 
   res.json({ start: start.toISOString(), end: end.toISOString(), total_income, total_appointments, byDay });
@@ -61,7 +61,7 @@ async function getMonthly(req, res) {
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();
 
-  const appointments = prepare(`
+  const appointments = await prepare(`
     SELECT * FROM appointments
     WHERE date_time >= ? AND date_time <= ?
     AND status = 'completed'
@@ -70,11 +70,11 @@ async function getMonthly(req, res) {
   const total_income = appointments.reduce((sum, a) => sum + a.total_price, 0);
   const total_appointments = appointments.length;
 
-  const byDay = prepare(`
-    SELECT date(date_time) as day, COUNT(*) as count, SUM(total_price) as income
+  const byDay = await prepare(`
+    SELECT date_time::date as day, COUNT(*) as count, SUM(total_price) as income
     FROM appointments
     WHERE date_time >= ? AND date_time <= ? AND status = 'completed'
-    GROUP BY date(date_time)
+    GROUP BY date_time::date
   `).all(start, end);
 
   res.json({ month: start, total_income, total_appointments, byDay });

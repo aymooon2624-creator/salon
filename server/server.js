@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const { initTables, getDb } = require('./database');
+const { getDb } = require('./database');
 const { authenticateToken } = require('./middleware/auth');
 const { requireAdmin } = require('./middleware/admin');
 
@@ -42,10 +42,23 @@ app.use('/api/coupons', couponRoutes);
 app.get('/api/settings/public', async (req, res) => {
   try {
     const { prepare } = await getDb();
-    const settings = prepare('SELECT auto_cancel_minutes, work_start, work_end, slot_duration FROM settings WHERE id = 1').get();
+    const settings = await prepare('SELECT auto_cancel_minutes, work_start, work_end, slot_duration FROM settings WHERE id = 1').get();
     res.json(settings || { auto_cancel_minutes: 5 });
   } catch (err) {
     res.json({ auto_cancel_minutes: 5 });
+  }
+});
+
+app.get('/api/cron/run', async (req, res) => {
+  try {
+    const cancelResult = await runAllCrons();
+    await checkReminders();
+    const recurringCount = await processRecurringBookings();
+    await checkCouponExpiry();
+    await checkLoyaltyBonus();
+    res.json({ ok: true, auto_cancelled: cancelResult.auto_cancelled, recurring_created: recurringCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -61,9 +74,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-async function start() {
-  await initDb();
-
+async function startServer() {
   async function runScheduledTasks() {
     try {
       const result = await runAllCrons();
@@ -76,9 +87,7 @@ async function start() {
   }
 
   setInterval(runScheduledTasks, 60000);
-
   setInterval(checkCouponExpiry, 3600000);
-
   setInterval(checkLoyaltyBonus, 86400000);
 
   app.listen(PORT, () => {
@@ -87,7 +96,13 @@ async function start() {
   });
 }
 
-start().catch(err => {
-  console.error('❌ خطأ في بدء التشغيل:', err);
-  process.exit(1);
-});
+initDb().catch(err => console.error('❌ DB init:', err));
+
+if (require.main === module) {
+  startServer().catch(err => {
+    console.error('❌ خطأ في بدء التشغيل:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = app;

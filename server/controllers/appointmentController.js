@@ -6,14 +6,14 @@ async function getAll(req, res) {
   let appointments;
 
   if (req.user.role === 'admin') {
-    appointments = prepare(`
+    appointments = await prepare(`
       SELECT a.*, u.username, u.phone
       FROM appointments a
       JOIN users u ON a.customer_id = u.id
       ORDER BY a.date_time DESC
     `).all();
   } else {
-    appointments = prepare(`
+    appointments = await prepare(`
       SELECT a.*, u.username, u.phone
       FROM appointments a
       JOIN users u ON a.customer_id = u.id
@@ -22,15 +22,15 @@ async function getAll(req, res) {
     `).all(req.user.id);
   }
 
-  const result = appointments.map(app => {
-    const services = prepare(`
+  const result = await Promise.all(appointments.map(async app => {
+    const services = await prepare(`
       SELECT s.id, s.name, s.icon, aps.price_at_booking
       FROM appointment_services aps
       JOIN services s ON aps.service_id = s.id
       WHERE aps.appointment_id = ?
     `).all(app.id);
     return { ...app, services };
-  });
+  }));
 
   res.json(result);
 }
@@ -41,7 +41,7 @@ async function getToday(req, res) {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-  const appointments = prepare(`
+  const appointments = await prepare(`
     SELECT a.*, u.username, u.phone
     FROM appointments a
     JOIN users u ON a.customer_id = u.id
@@ -49,15 +49,15 @@ async function getToday(req, res) {
     ORDER BY a.date_time ASC
   `).all(startOfDay, endOfDay);
 
-  const result = appointments.map(app => {
-    const services = prepare(`
+  const result = await Promise.all(appointments.map(async app => {
+    const services = await prepare(`
       SELECT s.id, s.name, s.icon, aps.price_at_booking
       FROM appointment_services aps
       JOIN services s ON aps.service_id = s.id
       WHERE aps.appointment_id = ?
     `).all(app.id);
     return { ...app, services };
-  });
+  }));
 
   res.json(result);
 }
@@ -71,18 +71,18 @@ async function create(req, res) {
 
   const { prepare, save } = await getDb();
 
-  const settings = prepare('SELECT * FROM settings WHERE id = 1').get();
+  const settings = await prepare('SELECT * FROM settings WHERE id = 1').get();
   if (!settings) {
     return res.status(500).json({ error: 'الإعدادات غير موجودة' });
   }
 
-  const barberStatus = prepare('SELECT * FROM barber_status WHERE id = 1').get();
+  const barberStatus = await prepare('SELECT * FROM barber_status WHERE id = 1').get();
   if (barberStatus && barberStatus.status !== 'available') {
     return res.status(400).json({ error: 'الحلاق غير متاح حالياً' });
   }
 
   const placeholders = service_ids.map(() => '?').join(',');
-  const services = prepare(`SELECT * FROM services WHERE id IN (${placeholders})`).all(...service_ids);
+  const services = await prepare(`SELECT * FROM services WHERE id IN (${placeholders})`).all(...service_ids);
 
   if (services.length !== service_ids.length) {
     return res.status(400).json({ error: 'بعض الخدمات غير موجودة' });
@@ -107,7 +107,7 @@ async function create(req, res) {
     return res.status(400).json({ error: 'خارج أوقات العمل' });
   }
 
-  const conflict = prepare(`
+  const conflict = await prepare(`
     SELECT id FROM appointments
     WHERE date_time = ? AND status NOT IN ('cancelled', 'auto_cancelled')
   `).get(date_time);
@@ -121,7 +121,7 @@ async function create(req, res) {
 
   if (coupon_code) {
     const today = new Date().toISOString().split('T')[0];
-    const coupon = prepare('SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= ? AND valid_until >= ?').get(coupon_code.toUpperCase(), today, today);
+    const coupon = await prepare('SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= ? AND valid_until >= ?').get(coupon_code.toUpperCase(), today, today);
     if (coupon) {
       if (!coupon.usage_limit || coupon.usage_count < coupon.usage_limit) {
         if (total_price >= coupon.min_order) {
@@ -130,8 +130,8 @@ async function create(req, res) {
           d = Math.min(d, total_price);
           discountAmount = Math.round(d * 100) / 100;
           couponId = coupon.id;
-          prepare('UPDATE coupons SET usage_count = usage_count + 1 WHERE id = ?').run(coupon.id);
-          prepare('INSERT INTO coupon_usage (coupon_id, customer_id, discount_amount) VALUES (?, ?, ?)').run(coupon.id, req.user.id, discountAmount);
+          await prepare('UPDATE coupons SET usage_count = usage_count + 1 WHERE id = ?').run(coupon.id);
+          await prepare('INSERT INTO coupon_usage (coupon_id, customer_id, discount_amount) VALUES (?, ?, ?)').run(coupon.id, req.user.id, discountAmount);
         }
       }
     }
@@ -139,14 +139,14 @@ async function create(req, res) {
 
   let loyaltyPointsUsed = 0;
   if (loyalty_points && loyalty_points > 0) {
-    const totalEarned = prepare("SELECT COALESCE(SUM(points), 0) as total FROM loyalty_points WHERE customer_id = ? AND type IN ('earned', 'bonus')").get(req.user.id);
-    const totalRedeemed = prepare("SELECT COALESCE(SUM(ABS(points)), 0) as total FROM loyalty_points WHERE customer_id = ? AND type = 'redeemed'").get(req.user.id);
+    const totalEarned = await prepare("SELECT COALESCE(SUM(points), 0) as total FROM loyalty_points WHERE customer_id = ? AND type IN ('earned', 'bonus')").get(req.user.id);
+    const totalRedeemed = await prepare("SELECT COALESCE(SUM(ABS(points)), 0) as total FROM loyalty_points WHERE customer_id = ? AND type = 'redeemed'").get(req.user.id);
     const balance = (totalEarned.total || 0) - (totalRedeemed.total || 0);
     const pointsAsDiscount = Math.min(loyalty_points, balance, Math.floor(total_price - discountAmount));
     if (pointsAsDiscount > 0) {
       loyaltyPointsUsed = pointsAsDiscount;
       discountAmount += pointsAsDiscount;
-      prepare('INSERT INTO loyalty_points (customer_id, points, type, description) VALUES (?, ?, ?, ?)').run(
+      await prepare('INSERT INTO loyalty_points (customer_id, points, type, description) VALUES (?, ?, ?, ?)').run(
         req.user.id, -pointsAsDiscount, 'redeemed', `خصم ${pointsAsDiscount} دينار من نقاط الولاء`
       );
     }
@@ -154,20 +154,20 @@ async function create(req, res) {
 
   const finalPrice = Math.max(0, total_price - discountAmount);
 
-  const result = prepare('INSERT INTO appointments (customer_id, date_time, status, total_price, total_duration, coupon_id, discount_amount, loyalty_points_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+  const result = await prepare('INSERT INTO appointments (customer_id, date_time, status, total_price, total_duration, coupon_id, discount_amount, loyalty_points_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id').run(
     req.user.id, date_time, 'pending', finalPrice, total_duration, couponId, discountAmount, loyaltyPointsUsed
   );
 
-  const appointmentId = result.lastInsertRowid;
+  const appointmentId = result.rows[0].id;
 
   for (const service of services) {
-    prepare('INSERT INTO appointment_services (appointment_id, service_id, price_at_booking) VALUES (?, ?, ?)').run(
+    await prepare('INSERT INTO appointment_services (appointment_id, service_id, price_at_booking) VALUES (?, ?, ?)').run(
       appointmentId, service.id, service.price
     );
   }
-  save();
+  await save();
 
-  const appointment = prepare('SELECT * FROM appointments WHERE id = ?').get(appointmentId);
+  const appointment = await prepare('SELECT * FROM appointments WHERE id = ?').get(appointmentId);
   res.status(201).json({ ...appointment, services, original_price: total_price, discount_amount: discountAmount });
 }
 
@@ -175,7 +175,7 @@ async function confirm(req, res) {
   const { id } = req.params;
   const { prepare, save } = await getDb();
 
-  const appointment = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const appointment = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   if (!appointment) {
     return res.status(404).json({ error: 'الموعد غير موجود' });
   }
@@ -183,11 +183,11 @@ async function confirm(req, res) {
     return res.status(400).json({ error: 'لا يمكن تأكيد هذا الموعد' });
   }
 
-  prepare("UPDATE appointments SET status = 'confirmed' WHERE id = ?").run(id);
-  prepare("UPDATE barber_status SET status = 'busy', last_updated = CURRENT_TIMESTAMP WHERE id = 1").run();
-  save();
+  await prepare("UPDATE appointments SET status = 'confirmed' WHERE id = ?").run(id);
+  await prepare("UPDATE barber_status SET status = 'busy', last_updated = CURRENT_TIMESTAMP WHERE id = 1").run();
+  await save();
 
-  const updated = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const updated = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   res.json(updated);
 }
 
@@ -195,7 +195,7 @@ async function cancel(req, res) {
   const { id } = req.params;
   const { prepare, save } = await getDb();
 
-  const appointment = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const appointment = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   if (!appointment) {
     return res.status(404).json({ error: 'الموعد غير موجود' });
   }
@@ -208,11 +208,11 @@ async function cancel(req, res) {
     return res.status(400).json({ error: 'لا يمكن إلغاء هذا الموعد' });
   }
 
-  prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?").run(id);
-  prepare("UPDATE barber_status SET status = 'available', last_updated = CURRENT_TIMESTAMP WHERE id = 1").run();
-  save();
+  await prepare("UPDATE appointments SET status = 'cancelled' WHERE id = ?").run(id);
+  await prepare("UPDATE barber_status SET status = 'available', last_updated = CURRENT_TIMESTAMP WHERE id = 1").run();
+  await save();
 
-  const updated = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const updated = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   res.json(updated);
 }
 
@@ -220,7 +220,7 @@ async function complete(req, res) {
   const { id } = req.params;
   const { prepare, save } = await getDb();
 
-  const appointment = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const appointment = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   if (!appointment) {
     return res.status(404).json({ error: 'الموعد غير موجود' });
   }
@@ -228,21 +228,21 @@ async function complete(req, res) {
     return res.status(400).json({ error: 'يجب تأكيد الموعد أولاً' });
   }
 
-  prepare("UPDATE appointments SET status = 'completed' WHERE id = ?").run(id);
-  prepare("UPDATE barber_status SET status = 'available', last_updated = CURRENT_TIMESTAMP WHERE id = 1").run();
-  save();
+  await prepare("UPDATE appointments SET status = 'completed' WHERE id = ?").run(id);
+  await prepare("UPDATE barber_status SET status = 'available', last_updated = CURRENT_TIMESTAMP WHERE id = 1").run();
+  await save();
 
   const points = Math.floor(appointment.total_price / 5);
   await addPoints(appointment.customer_id, points, 'earned', `${points} نقطة مقابل الخدمة`, appointment.id);
 
-  const updated = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const updated = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   res.json(updated);
 }
 
 async function getCustomerAppointments(req, res) {
   const { id } = req.params;
   const { prepare } = await getDb();
-  const appointments = prepare(`
+  const appointments = await prepare(`
     SELECT a.*, u.username, u.phone
     FROM appointments a
     JOIN users u ON a.customer_id = u.id
@@ -250,15 +250,15 @@ async function getCustomerAppointments(req, res) {
     ORDER BY a.date_time DESC
   `).all(id);
 
-  const result = appointments.map(app => {
-    const services = prepare(`
+  const result = await Promise.all(appointments.map(async app => {
+    const services = await prepare(`
       SELECT s.id, s.name, s.icon, aps.price_at_booking
       FROM appointment_services aps
       JOIN services s ON aps.service_id = s.id
       WHERE aps.appointment_id = ?
     `).all(app.id);
     return { ...app, services };
-  });
+  }));
 
   res.json(result);
 }
@@ -272,7 +272,7 @@ async function reschedule(req, res) {
   }
 
   const { prepare, save } = await getDb();
-  const appointment = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const appointment = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
   if (!appointment) {
     return res.status(404).json({ error: 'الموعد غير موجود' });
   }
@@ -283,7 +283,7 @@ async function reschedule(req, res) {
     return res.status(400).json({ error: 'يجب أن يكون الموعد في المستقبل' });
   }
 
-  const settings = prepare('SELECT * FROM settings WHERE id = 1').get();
+  const settings = await prepare('SELECT * FROM settings WHERE id = 1').get();
   if (settings) {
     const [workHour, workMin] = (settings.work_start || '09:00').split(':').map(Number);
     const [endHour, endMin] = (settings.work_end || '21:00').split(':').map(Number);
@@ -295,7 +295,7 @@ async function reschedule(req, res) {
     }
   }
 
-  const conflict = prepare(`
+  const conflict = await prepare(`
     SELECT id FROM appointments
     WHERE date_time = ? AND id != ? AND status NOT IN ('cancelled', 'auto_cancelled')
   `).get(date_time, id);
@@ -304,11 +304,11 @@ async function reschedule(req, res) {
     return res.status(400).json({ error: 'هذا الموعد محجوب مسبقاً' });
   }
 
-  prepare("UPDATE appointments SET date_time = ?, status = 'pending', reminder_sent = 0 WHERE id = ?").run(date_time, id);
-  save();
+  await prepare("UPDATE appointments SET date_time = ?, status = 'pending', reminder_sent = 0 WHERE id = ?").run(date_time, id);
+  await save();
 
-  const updated = prepare('SELECT * FROM appointments WHERE id = ?').get(id);
-  const services = prepare(`
+  const updated = await prepare('SELECT * FROM appointments WHERE id = ?').get(id);
+  const services = await prepare(`
     SELECT s.id, s.name, s.icon, aps.price_at_booking
     FROM appointment_services aps
     JOIN services s ON aps.service_id = s.id
@@ -329,8 +329,8 @@ async function getAvailableSlots(req, res) {
   }
 
   const { prepare } = await getDb();
-  const settings = prepare('SELECT * FROM settings WHERE id = 1').get();
-  const barberStatus = prepare('SELECT * FROM barber_status WHERE id = 1').get();
+  const settings = await prepare('SELECT * FROM settings WHERE id = 1').get();
+  const barberStatus = await prepare('SELECT * FROM barber_status WHERE id = 1').get();
 
   if (barberStatus && barberStatus.status !== 'available') {
     return res.json({ slots: [], message: 'الحلاق غير متاح اليوم' });
@@ -340,9 +340,9 @@ async function getAvailableSlots(req, res) {
   const [endH, endM] = (settings.work_end || '21:00').split(':').map(Number);
   const slotDuration = settings.slot_duration || 30;
 
-  const booked = prepare(`
+  const booked = await prepare(`
     SELECT date_time FROM appointments
-    WHERE date(date_time) = ? AND status NOT IN ('cancelled', 'auto_cancelled')
+    WHERE date_time::date = ? AND status NOT IN ('cancelled', 'auto_cancelled')
   `).all(date);
 
   const bookedTimes = new Set(booked.map(b => {

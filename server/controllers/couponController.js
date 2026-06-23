@@ -3,13 +3,13 @@ const { getDb } = require('../database');
 async function getActive(req, res) {
   const { prepare } = await getDb();
   const today = new Date().toISOString().split('T')[0];
-  const coupons = prepare('SELECT * FROM coupons WHERE is_active = 1 AND valid_from <= ? AND valid_until >= ?').all(today, today);
+  const coupons = await prepare('SELECT * FROM coupons WHERE is_active = 1 AND valid_from <= ? AND valid_until >= ?').all(today, today);
   res.json(coupons);
 }
 
 async function getAll(req, res) {
   const { prepare } = await getDb();
-  const coupons = prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
+  const coupons = await prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
   res.json(coupons);
 }
 
@@ -24,15 +24,15 @@ async function create(req, res) {
   }
 
   const { prepare, save } = await getDb();
-  const existing = prepare('SELECT id FROM coupons WHERE code = ?').get(code);
+  const existing = await prepare('SELECT id FROM coupons WHERE code = ?').get(code);
   if (existing) return res.status(400).json({ error: 'الكود موجود مسبقاً' });
 
-  const result = prepare('INSERT INTO coupons (code, description, discount_type, discount_value, min_order, max_discount, usage_limit, valid_from, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+  const result = await prepare('INSERT INTO coupons (code, description, discount_type, discount_value, min_order, max_discount, usage_limit, valid_from, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id').run(
     code.toUpperCase(), description || '', discount_type, discount_value, min_order || 0, max_discount || null, usage_limit || null, valid_from, valid_until
   );
-  save();
+  await save();
 
-  const coupon = prepare('SELECT * FROM coupons WHERE id = ?').get(result.lastInsertRowid);
+  const coupon = await prepare('SELECT * FROM coupons WHERE id = ?').get(result.rows[0].id);
   res.status(201).json(coupon);
 }
 
@@ -41,10 +41,10 @@ async function update(req, res) {
   const updates = req.body;
   const { prepare, save } = await getDb();
 
-  const existing = prepare('SELECT * FROM coupons WHERE id = ?').get(id);
+  const existing = await prepare('SELECT * FROM coupons WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'غير موجود' });
 
-  prepare('UPDATE coupons SET code = ?, description = ?, discount_type = ?, discount_value = ?, min_order = ?, max_discount = ?, usage_limit = ?, valid_from = ?, valid_until = ?, is_active = ? WHERE id = ?').run(
+  await prepare('UPDATE coupons SET code = ?, description = ?, discount_type = ?, discount_value = ?, min_order = ?, max_discount = ?, usage_limit = ?, valid_from = ?, valid_until = ?, is_active = ? WHERE id = ?').run(
     updates.code || existing.code,
     updates.description != null ? updates.description : existing.description,
     updates.discount_type || existing.discount_type,
@@ -57,9 +57,9 @@ async function update(req, res) {
     updates.is_active != null ? (updates.is_active ? 1 : 0) : existing.is_active,
     id
   );
-  save();
+  await save();
 
-  const updated = prepare('SELECT * FROM coupons WHERE id = ?').get(id);
+  const updated = await prepare('SELECT * FROM coupons WHERE id = ?').get(id);
   res.json(updated);
 }
 
@@ -69,7 +69,7 @@ async function validate(req, res) {
 
   const { prepare } = await getDb();
   const today = new Date().toISOString().split('T')[0];
-  const coupon = prepare('SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= ? AND valid_until >= ?').get(code.toUpperCase(), today, today);
+  const coupon = await prepare('SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= ? AND valid_until >= ?').get(code.toUpperCase(), today, today);
 
   if (!coupon) return res.status(404).json({ error: 'الكود غير صالح أو منتهي الصلاحية' });
   if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
@@ -94,11 +94,11 @@ async function apply(req, res) {
 
   const { prepare, save } = await getDb();
 
-  const appointment = prepare('SELECT * FROM appointments WHERE id = ? AND customer_id = ?').get(appointment_id, req.user.id);
+  const appointment = await prepare('SELECT * FROM appointments WHERE id = ? AND customer_id = ?').get(appointment_id, req.user.id);
   if (!appointment) return res.status(404).json({ error: 'الموعد غير موجود' });
 
   const today = new Date().toISOString().split('T')[0];
-  const coupon = prepare('SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= ? AND valid_until >= ?').get(code.toUpperCase(), today, today);
+  const coupon = await prepare('SELECT * FROM coupons WHERE code = ? AND is_active = 1 AND valid_from <= ? AND valid_until >= ?').get(code.toUpperCase(), today, today);
   if (!coupon) return res.status(404).json({ error: 'الكود غير صالح' });
   if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
     return res.status(400).json({ error: 'انتهت صلاحية الاستخدام' });
@@ -113,20 +113,20 @@ async function apply(req, res) {
   if (coupon.max_discount) discount = Math.min(discount, coupon.max_discount);
   discount = Math.min(discount, appointment.total_price);
 
-  prepare('UPDATE appointments SET coupon_id = ?, discount_amount = ? WHERE id = ?').run(coupon.id, discount, appointment_id);
-  prepare('UPDATE coupons SET usage_count = usage_count + 1 WHERE id = ?').run(coupon.id);
-  prepare('INSERT INTO coupon_usage (coupon_id, customer_id, appointment_id, discount_amount) VALUES (?, ?, ?, ?)').run(
+  await prepare('UPDATE appointments SET coupon_id = ?, discount_amount = ? WHERE id = ?').run(coupon.id, discount, appointment_id);
+  await prepare('UPDATE coupons SET usage_count = usage_count + 1 WHERE id = ?').run(coupon.id);
+  await prepare('INSERT INTO coupon_usage (coupon_id, customer_id, appointment_id, discount_amount) VALUES (?, ?, ?, ?)').run(
     coupon.id, req.user.id, appointment_id, discount
   );
-  save();
+  await save();
 
-  const updated = prepare('SELECT * FROM appointments WHERE id = ?').get(appointment_id);
+  const updated = await prepare('SELECT * FROM appointments WHERE id = ?').get(appointment_id);
   res.json({ message: '✅ تم تطبيق الكود', appointment: updated, discount });
 }
 
 async function getStats(req, res) {
   const { prepare } = await getDb();
-  const stats = prepare(`
+  const stats = await prepare(`
     SELECT c.id, c.code, c.usage_count, c.usage_limit,
            COUNT(cu.id) as actual_usage, COALESCE(SUM(cu.discount_amount), 0) as total_discount
     FROM coupons c

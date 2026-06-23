@@ -4,7 +4,7 @@ const { createNotification } = require('./notificationController');
 async function getConversation(req, res) {
   const { userId } = req.params;
   const { prepare } = await getDb();
-  const messages = prepare(`
+  const messages = await prepare(`
     SELECT cm.*, u.username as sender_name
     FROM chat_messages cm
     JOIN users u ON cm.sender_id = u.id
@@ -21,29 +21,29 @@ async function sendMessage(req, res) {
   }
 
   const { prepare, save } = await getDb();
-  const result = prepare('INSERT INTO chat_messages (sender_id, receiver_id, message) VALUES (?, ?, ?)').run(
+  const result = await prepare('INSERT INTO chat_messages (sender_id, receiver_id, message) VALUES (?, ?, ?) RETURNING id').run(
     req.user.id, receiver_id, message
   );
-  save();
+  await save();
 
-  const sender = prepare('SELECT username FROM users WHERE id = ?').get(req.user.id);
+  const sender = await prepare('SELECT username FROM users WHERE id = ?').get(req.user.id);
   await createNotification(receiver_id, 'chat', `💬 رسالة جديدة من ${sender.username}`, message);
 
-  const msg = prepare('SELECT cm.*, u.username as sender_name FROM chat_messages cm JOIN users u ON cm.sender_id = u.id WHERE cm.id = ?').get(result.lastInsertRowid);
+  const msg = await prepare('SELECT cm.*, u.username as sender_name FROM chat_messages cm JOIN users u ON cm.sender_id = u.id WHERE cm.id = ?').get(result.rows[0].id);
   res.status(201).json(msg);
 }
 
 async function markAsRead(req, res) {
   const { id } = req.params;
   const { prepare, save } = await getDb();
-  prepare('UPDATE chat_messages SET is_read = 1 WHERE id = ? AND receiver_id = ?').run(id, req.user.id);
-  save();
+  await prepare('UPDATE chat_messages SET is_read = 1 WHERE id = ? AND receiver_id = ?').run(id, req.user.id);
+  await save();
   res.json({ message: 'تم' });
 }
 
 async function getUnreadCount(req, res) {
   const { prepare } = await getDb();
-  const row = prepare('SELECT COUNT(*) as count FROM chat_messages WHERE receiver_id = ? AND is_read = 0').get(req.user.id);
+  const row = await prepare('SELECT COUNT(*) as count FROM chat_messages WHERE receiver_id = ? AND is_read = 0').get(req.user.id);
   res.json({ count: row.count });
 }
 
@@ -53,7 +53,7 @@ async function getConversations(req, res) {
   const isAdmin = req.user.role === 'admin';
   let usersList;
   if (isAdmin) {
-    usersList = prepare(`
+    usersList = await prepare(`
       SELECT DISTINCT u.id, u.username,
         (SELECT message FROM chat_messages WHERE (sender_id = u.id AND receiver_id = 1) OR (sender_id = 1 AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message,
         (SELECT created_at FROM chat_messages WHERE (sender_id = u.id AND receiver_id = 1) OR (sender_id = 1 AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_time,
@@ -66,7 +66,7 @@ async function getConversations(req, res) {
       ORDER BY last_time DESC
     `).all();
   } else {
-    usersList = prepare(`
+    usersList = await prepare(`
       SELECT u.id, u.username,
         (SELECT message FROM chat_messages WHERE (sender_id = ? AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = ?) ORDER BY created_at DESC LIMIT 1) as last_message,
         (SELECT created_at FROM chat_messages WHERE (sender_id = ? AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = ?) ORDER BY created_at DESC LIMIT 1) as last_time,

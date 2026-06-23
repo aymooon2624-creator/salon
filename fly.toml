@@ -6,13 +6,3 @@ app = "salon-alshayib"
 [http_service]
   internal_port = 3000
   force_https = true
-
-[[mounts]]
-  source = "data"
-  destination = "/data"
-
-[env]
-  DB_PATH = "/data/salon.db"
-
-[experimental]
-  allowed_public_networks = ["internal"]
