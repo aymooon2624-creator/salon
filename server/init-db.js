@@ -10,6 +10,15 @@ async function init() {
 
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (adminUsername !== 'admin') {
+    const oldAdmin = await prepare('SELECT id FROM users WHERE username = ? AND role = ?').get('admin', 'admin');
+    if (oldAdmin) {
+      await prepare('DELETE FROM users WHERE id = ?').run(oldAdmin.id);
+      console.log('🗑️ تم حذف حساب الأدمن الافتراضي (admin)');
+    }
+  }
+
   const adminExists = await prepare('SELECT id FROM users WHERE username = ?').get(adminUsername);
   if (!adminExists) {
     const hashed = bcrypt.hashSync(adminPassword, 10);

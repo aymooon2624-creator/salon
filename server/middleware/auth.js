@@ -1,9 +1,19 @@
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'salon-app-secret-key-2024';
 
+function parseCookies(req) {
+  const cookie = req.headers.cookie;
+  if (!cookie) return {};
+  return cookie.split(';').reduce((acc, c) => {
+    const [k, v] = c.trim().split('=');
+    acc[k] = v;
+    return acc;
+  }, {});
+}
+
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = (authHeader && authHeader.split(' ')[1]) || parseCookies(req)['token'];
 
   if (!token) {
     return res.status(401).json({ error: 'مطلوب تسجيل الدخول' });

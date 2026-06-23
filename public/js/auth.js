@@ -18,7 +18,10 @@ function isAdmin() {
   return user && user.role === 'admin';
 }
 
-function handleLogout() {
+async function handleLogout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch (e) { /* ignore */ }
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   window.location.href = 'login.html';

@@ -28,6 +28,7 @@ async function register(req, res) {
   const user = { id: result.rows[0].id, username, role: 'customer' };
   const token = generateToken(user);
 
+  res.cookie('token', token, { httpOnly: true, maxAge: 86400000, sameSite: 'lax', path: '/' });
   res.status(201).json({ token, user: { id: user.id, username: user.username, role: user.role } });
 }
 
@@ -46,6 +47,7 @@ async function login(req, res) {
   }
 
   const token = generateToken(user);
+  res.cookie('token', token, { httpOnly: true, maxAge: 86400000, sameSite: 'lax', path: '/' });
   res.json({ token, user: { id: user.id, username: user.username, role: user.role, phone: user.phone } });
 }
 
