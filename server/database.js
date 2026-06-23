@@ -2,9 +2,12 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')
-    ? { rejectUnauthorized: false }
-    : false
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000
+});
+
+pool.on('error', err => {
+  console.error('⚠️ خطأ في قاعدة البيانات:', err.message);
 });
 
 class Statement {
