@@ -10,6 +10,13 @@ async function getStatus(req, res) {
     status = await prepare('SELECT * FROM barber_status WHERE id = 1').get();
   }
 
+  if (status.back_at) {
+    const d = new Date(status.back_at);
+    if (!isNaN(d.getTime())) {
+      status.back_at = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+
   res.json(status);
 }
 
@@ -20,9 +27,17 @@ async function updateStatus(req, res) {
     return res.status(400).json({ error: 'حالة غير صالحة' });
   }
 
+  let backAtValue = null;
+  if (back_at) {
+    const [h, m] = back_at.split(':');
+    const d = new Date();
+    d.setHours(parseInt(h), parseInt(m), 0, 0);
+    backAtValue = d.toISOString();
+  }
+
   const { prepare, save } = await getDb();
   await prepare('UPDATE barber_status SET status = ?, back_at = ?, last_updated = CURRENT_TIMESTAMP WHERE id = 1').run(
-    newStatus, back_at || null
+    newStatus, backAtValue
   );
   save();
 
