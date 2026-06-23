@@ -330,11 +330,6 @@ async function getAvailableSlots(req, res) {
 
   const { prepare } = await getDb();
   const settings = await prepare('SELECT * FROM settings WHERE id = 1').get();
-  const barberStatus = await prepare('SELECT * FROM barber_status WHERE id = 1').get();
-
-  if (barberStatus && barberStatus.status !== 'available') {
-    return res.json({ slots: [], message: 'الحلاق غير متاح اليوم' });
-  }
 
   const [startH, startM] = ((settings && settings.work_start) || '09:00').split(':').map(Number);
   const [endH, endM] = ((settings && settings.work_end) || '21:00').split(':').map(Number);
@@ -347,13 +342,8 @@ async function getAvailableSlots(req, res) {
 
   const bookedTimes = new Set(booked.map(b => {
     const d = new Date(b.date_time);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }));
-
-  const now = new Date();
-  const nowStr = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
-  const todayUTC = now.toISOString().split('T')[0];
-  const isToday = date === todayUTC;
 
   const slots = [];
   for (let h = startH; h <= endH; h++) {
@@ -361,9 +351,7 @@ async function getAvailableSlots(req, res) {
       if (h === endH && m >= endM) break;
       const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       if (!bookedTimes.has(timeStr)) {
-        if (!isToday || timeStr > nowStr) {
-          slots.push(timeStr);
-        }
+        slots.push(timeStr);
       }
     }
   }
